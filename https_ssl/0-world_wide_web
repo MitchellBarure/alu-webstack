@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+# Displays DNS information for common subdomains of a given domain
+
+set -e
+
+# shellcheck disable=SC2086
+
+domain="$1"
+subdomain="$2"
+
+get_subdomain_info() {
+    local domain_name="$1"
+    local sub="$2"
+    local fqdn="${sub}.${domain_name}"
+
+    # Get the first ANSWER line from dig
+    local answer_line
+    answer_line=$(dig "$fqdn" | awk '/^;; ANSWER SECTION:/{getline; print}')
+
+    # Extract record type and destination with awk
+    local record_type destination
+    record_type=$(echo "$answer_line" | awk '{print $4}')
+    destination=$(echo "$answer_line" | awk '{print $5}')
+
+    echo "The subdomain ${sub} is a ${record_type} record and points to ${destination}"
+}
+
+if [ -z "$domain" ]; then
+    echo "Usage: $0 DOMAIN [SUBDOMAIN]"
+    exit 1
+fi
+
+if [ -n "$subdomain" ]; then
+    # Only one specific subdomain to audit
+    get_subdomain_info "$domain" "$subdomain"
+else
+    # Default list: www, lb-01, web-01, web-02 (in this exact order)
+    get_subdomain_info "$domain" "www"
+    get_subdomain_info "$domain" "lb-01"
+    get_subdomain_info "$domain" "web-01"
+    get_subdomain_info "$domain" "web-02"
+fi
+
